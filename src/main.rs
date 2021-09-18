@@ -196,7 +196,7 @@ fn render_home<'a>() -> Paragraph<'a> {
         Spans::from(vec![Span::raw("")]),
         Spans::from(vec![Span::raw("Welcome")]),
         Spans::from(vec![Span::raw("")]),
-        Spans:from(vec![Span::raw("to")]),
+        Spans::from(vec![Span::raw("to")]),
         Spans::from(vec![Span::raw("")]),
         Spans::from(vec![Span::styled("mau-cli",Style::default().fg(Color::LightBlue),)]),
         Spans::from(vec![Span::raw("")]),
@@ -219,4 +219,28 @@ fn render_pets<'a>(pet_list_state: &ListState) -> (List<'a>,Table<'a>){
         .style(Style::default().fg(Color::White))
         .title("pets")
         .border_type(BorderType::Plain);
+    let pet_list = read_db().expect("can fetch pet list");
+    let items: Vec<_> = pet_list
+        .iter()
+        .map(|pet| {
+            ListItem::new(Spans::from(vec![Span::styled(
+                pet.name.clone(),
+                Style::default(),
+            )]))
+        }).collect();
+    let selected_pet = pet_list
+        .get(
+            pet_list_update
+                .selected()
+                .expect("there is always a selected pet"),
+        )
+        .expect("exists")
+        .clone();
+    let list = List::new(items).block(pets).highlight_style(
+        Style::default()
+            .bg(Color::Yellow)
+            .fg(Color::Black)
+            .add_modifier(Modifier::BOLD),
+    );
+
 }
