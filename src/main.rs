@@ -214,5 +214,9 @@ fn render_home<'a>() -> Paragraph<'a> {
 }
 
 fn render_pets<'a>(pet_list_state: &ListState) -> (List<'a>,Table<'a>){
-
+    let pets = Block::default()
+        .borders(Borders::ALL)
+        .style(Style::default().fg(Color::White))
+        .title("pets")
+        .border_type(BorderType::Plain);
 }
