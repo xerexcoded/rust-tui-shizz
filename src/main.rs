@@ -3,7 +3,6 @@ use crossterm::{
     event::{self,Event as CEvent,KeyCode},
     terminal::{disable_raw_mode,enable_raw_mode},
 };
-use proc_macro::bridge::server::Span;
 use rand::{distributions::Alphanumeric,prelude::*};
 use serde::{Deserialize,Serialize};
 use std::{fs, thread, usize};
@@ -17,7 +16,7 @@ use tui:: {
     style::{Color,Modifier,Style},
     text::{Span,Spans},
     widgets::{
-        Block,BorderType,Border,Cell,List,ListItem,ListState,Paragraph,Row,Table,Tabs
+        Block,BorderType,Borders,Cell,List,ListItem,ListState,Paragraph,Row,Table,Tabs
     },
     Terminal,
 } ;
@@ -157,10 +156,63 @@ fn main() -> Result<(),Box<dyn std::error::Error>> {
                        add_random_pet_to_db().expect("can add new random pet");
                 }
                 KeyCode::Char('d') => {
-                     remove_pet_at_index(&mut pet_list_state).expect("can fetch pet list ");
+                     remove_pet_at_index(&mut pet_list_state).expect("can remove pet");
                 }
+                KeyCode::Down => {
+                    if let Some(selected) = pet_list_state.selected() {
+                        let amount_pets = read_db().expect("can you fetch pet list ").len();
+                        if selected >= amount_pets -1 {
+                            pet_list_state.select(Some(0));
+                        }
+                        else {
+                            pet_list_state.select(Some(selected + 1));
+                        }
+                    }
+
+                }
+                KeyCode::Up => {
+                    if let Some(selected)= pet_list_state.selected() {
+                        let amount_pets = read_db().expect("can fetch pet list").len();
+                        if selected >0 {
+                            pet_list_state.select(Some(selected - 1));
+                        }else {
+
+                            pet_list_state.select(Some(amount_pets - 1));
+                        }
+
+                    }
+                }
+                _ => {}
                 
-            }
+            },
+            Event::Tick => {}
         }
     }
+    Ok(())
+}
+
+fn render_home<'a>() -> Paragraph<'a> {
+    let home = Paragraph::new(vec![
+        Spans::from(vec![Span::raw("")]),
+        Spans::from(vec![Span::raw("Welcome")]),
+        Spans::from(vec![Span::raw("")]),
+        Spans:from(vec![Span::raw("to")]),
+        Spans::from(vec![Span::raw("")]),
+        Spans::from(vec![Span::styled("mau-cli",Style::default().fg(Color::LightBlue),)]),
+        Spans::from(vec![Span::raw("")]),
+        Spans::from(vec![Span::raw("Press 'p' to acess pets , 'a' to add random new pets and 'd' to delete")]),
+
+    ]).alignment(Alignment::Center)
+      .block(
+          Block::default()
+              .borders(Borders::ALL)
+              .style(Style::default().fg(Color::White))
+              .title("Home")
+              .border_type(BorderType::Plain),
+      );
+    home
+}
+
+fn render_pets<'a>(pet_list_state: &ListState) -> (List<'a>,Table<'a>){
+
 }
