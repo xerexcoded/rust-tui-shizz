@@ -121,42 +121,42 @@ fn main() -> Result<(),Box<dyn std::error::Error>> {
                 .margin(2)
                 .constraints([Constraint::Length(3),Constraint::Min(2),Constraint::Length(3),].as_ref(),).split(size);
      
-
+              // footer
             let copyright =Paragraph::new("mau-cli 2021 - no rights reserved")
-                .style(Style::default().fg(Color::LightCyan))
+                .style(Style::default().fg(Color::LightGreen))
                 .alignment(Alignment::Center)
-                .block(Block::default()
+                .block(Block::default() //block defines where you can put the title and optional border around the content
                        .borders(Borders::ALL)
                        .style(Style::default().fg(Color::White))
                        .title("poppyRight")
-                       .border_type(BorderType::Plain),
+                       .border_type(BorderType::Double),
                        );
             let menu = menu_titles
                 .iter()
                 .map(|t| {
-                    let (first,rest) = t.split_at(1);
+                    let (first,rest) = t.split_at(1);//at 1st chracter of each string in the vec
                     Spans::from(vec![
                                 Span::styled(first,
                                              Style::default()
-                                             .fg(Color::Yellow)
+                                             .fg(Color::LightGreen)
                                              .add_modifier(Modifier::UNDERLINED),
                                              ),
-                                             Span::styled(rest,Style::default().fg(Color::White)),
+                                             Span::styled(rest,Style::default().fg(Color::LightRed)),
                     ])
                 }).collect();
             let tabs =Tabs::new(menu)
                 .select(active_menu_item.into())
                 .block(Block::default().title("Menu").borders(Borders::ALL))
                 .style(Style::default().fg(Color::White))
-                .highlight_style(Style::default().fg(Color::Yellow))
+                .highlight_style(Style::default().fg(Color::LightMagenta))
                 .divider(Span::raw("|"));
             rect.render_widget(tabs,chunks[0]);
             match active_menu_item {
                 MenuItem::Home => rect.render_widget(render_home(), chunks[1]),
                 MenuItem::Pets => {
                     let pets_chunks =Layout::default()
-                        .direction(Direction::Horizontal)
-                        .constraints([Constraint::Percentage(20),Constraint::Percentage(80)].as_ref(),).split(chunks[1]);
+                        .direction(Direction::Horizontal)//to display pets page with 2 elements adjacent to each in horizontal orientation
+                        .constraints([Constraint::Percentage(20),Constraint::Percentage(80)].as_ref(),).split(chunks[1]);//spliting only the middle chunk
                     let (left,right) = render_pets(&pet_list_state);
                     rect.render_stateful_widget(left, pets_chunks[0], &mut pet_list_state);
                   rect.render_widget(right,pets_chunks[1]); 
@@ -166,14 +166,17 @@ fn main() -> Result<(),Box<dyn std::error::Error>> {
             rect.render_widget(copyright, chunks[2]);
 
         })?;
-
-        match rx.recv()?{
+        // handling input
+        // we always render the current state first 
+        // and the react to new input on the recieving end of our channel
+        match rx.recv()?{//matching to corresponding key
             Event::Input(event) => match event.code {
                 KeyCode::Char('q') => {
-                    disable_raw_mode()?;
-                    terminal.show_cursor()?;
+                    disable_raw_mode()?;// for quitting
+                    terminal.show_cursor()?;//return command prompt and break out of input loop
                     break;
                 }
+                // set respective routes
                 KeyCode::Char('h') => active_menu_item =MenuItem::Home,
                 KeyCode::Char(('p')) => active_menu_item = MenuItem::Pets,
                 KeyCode::Char('a') => {
@@ -222,7 +225,7 @@ fn render_home<'a>() -> Paragraph<'a> {
         Spans::from(vec![Span::raw("")]),
         Spans::from(vec![Span::raw("to")]),
         Spans::from(vec![Span::raw("")]),
-        Spans::from(vec![Span::styled("mau-cli",Style::default().fg(Color::LightBlue),)]),
+        Spans::from(vec![Span::styled("mau-cli",Style::default().fg(Color::LightYellow),)]),
         Spans::from(vec![Span::raw("")]),
         Spans::from(vec![Span::raw("Press 'p' to acess pets , 'a' to add random new pets and 'd' to delete")]),
 
@@ -232,18 +235,19 @@ fn render_home<'a>() -> Paragraph<'a> {
               .borders(Borders::ALL)
               .style(Style::default().fg(Color::White))
               .title("Home")
-              .border_type(BorderType::Plain),
+              .border_type(BorderType::Double),
       );
     home
 }
-
+//List is stateful , comes like this by default in TUI
+//render pets return a List and Table , both are TUI widgets
 fn render_pets<'a>(pet_list_state: &ListState) -> (List<'a>,Table<'a>){
     let pets = Block::default()
         .borders(Borders::ALL)
-        .style(Style::default().fg(Color::White))
+        .style(Style::default().fg(Color::LightCyan))
         .title("pets")
-        .border_type(BorderType::Plain);
-    let pet_list = read_db().expect("can fetch pet list");
+        .border_type(BorderType::Rounded);
+    let pet_list = read_db().expect("can fetch pet list");//PARSES it into a vec
     let items: Vec<_> = pet_list
         .iter()
         .map(|pet| {
@@ -298,9 +302,9 @@ fn render_pets<'a>(pet_list_state: &ListState) -> (List<'a>,Table<'a>){
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .style(Style::default().fg(Color::White))
+                .style(Style::default().fg(Color::Green))
                 .title("Detail")
-                .border_type(BorderType::Plain)
+                .border_type(BorderType::Rounded)
         )
         .widths(&[
             Constraint::Percentage(5),
@@ -308,7 +312,7 @@ fn render_pets<'a>(pet_list_state: &ListState) -> (List<'a>,Table<'a>){
             Constraint::Percentage(20),
             Constraint::Percentage(5),
             Constraint::Percentage(20),
-        ]);
+        ]);//define width in percentage as it makes it responsive
     (list,pet_detail)
 }
 fn read_db() -> Result<Vec<Pet>,Error> {
@@ -317,10 +321,11 @@ fn read_db() -> Result<Vec<Pet>,Error> {
     Ok(parsed)
 }
 fn add_random_pet_to_db() -> Result<Vec<Pet>,Error>{
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::thread_rng();// to create random
+    // not taking input from user yet
     let db_content = fs::read_to_string(DB_PATH)?;
     let mut parsed : Vec<Pet> = serde_json::from_str(&db_content)?;
-    let catsdogs = match rng.gen_range(0,1) {
+    let catsdogs = match rng.gen_range(0,1) { // randomly assigned cat or dog
         0 => "cats",
         _ => "dogs"
     };
@@ -331,7 +336,7 @@ fn add_random_pet_to_db() -> Result<Vec<Pet>,Error>{
         age:rng.gen_range(1,15),
         created_at :Utc::now(),
     };
-    parsed.push(random_pet);
+    parsed.push(random_pet); //push on to the parsed db that was returned
     fs::write(DB_PATH,&serde_json::to_vec(&parsed)?)?;
     Ok(parsed)
 }
@@ -341,7 +346,7 @@ fn remove_pet_at_index(pet_list_state:&mut ListState) -> Result<(),Error> {
         let mut parsed : Vec<Pet> = serde_json::from_str(&db_content)?;
         parsed.remove(selected);
         fs::write(DB_PATH, &serde_json::to_vec(&parsed)?)?;
-        pet_list_state.select(Some(selected - 1));
+        pet_list_state.select(Some(selected - 1));//decreament the pet list 
     }
     Ok(())
 }
