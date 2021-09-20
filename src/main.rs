@@ -1,10 +1,10 @@
-use chrono::prelude::*;
+use chrono::prelude::*; // for handling date creation
 use crossterm::{
     event::{self,Event as CEvent,KeyCode},
     terminal::{disable_raw_mode,enable_raw_mode},
-};
+}; // for terminal backend
 use rand::{distributions::Alphanumeric,prelude::*};
-use serde::{Deserialize,Serialize};
+use serde::{Deserialize,Serialize}; // for handling json 
 use std::{fs, thread, usize};
 use std::io;
 use std::sync::mpsc;
@@ -22,6 +22,8 @@ use tui:: {
 } ;
 const DB_PATH :&str="./data/db.json";
 
+
+//handling internal error types , as we might run into some i/o errors
 #[derive(Error,Debug)]
 pub enum Error {
     #[error("error reading in DBfile: {0}")]
@@ -29,12 +31,16 @@ pub enum Error {
     #[error("error parsing the DB file: {0}")]
     ParseDBError(#[from] serde_json::Error),
 }
+
+// data structure for input events 
+// input is either an user input 
+// or a tick , tick_rate is defined to emit a tick if nothing happens 
 enum Event<I> {
     Input(I),
     Tick,
 }
 #[derive(Serialize,Deserialize,Clone)]
-struct Pet {
+struct Pet {  //defining data strcuture for what a pet should look like
     id: usize,
     name:String,
     category: String,
@@ -42,11 +48,12 @@ struct Pet {
     created_at:DateTime<Utc>,
 }
 #[derive(Clone, Copy,Debug)]
-enum MenuItem {
+enum MenuItem {  // data strcuture for determining where we are in the app
     Home,Pets,
 }
 impl From<MenuItem> for usize {
-    fn from(input:MenuItem) -> usize {
+    fn from(input:MenuItem) -> usize { //takes MenuItem as input and returns usize , thus enabling us mapping to currently selected tab
+
         match input {
             MenuItem::Home => 0,
             MenuItem::Pets =>1,
@@ -55,21 +62,27 @@ impl From<MenuItem> for usize {
 }
 
 
-
+// enabling raw mode lets us elimainate the need of waiting for terminal input from user
 
 fn main() -> Result<(),Box<dyn std::error::Error>> {
     enable_raw_mode().expect("can run in raw mode");
+
+    //setting up mpsc for comminicating between input handler and rendering loop
     let (tx,rx) = mpsc::channel();
     let tick_rate=Duration::from_millis(200);
     thread::spawn(move || {
         let mut last_tick =Instant::now();
-        loop {
+        loop { // input loop
+            // calculate timeout(next tick)
             let timeout = tick_rate
                 .checked_sub(last_tick.elapsed())
                 .unwrap_or_else(|| Duration::from_secs(0));
+            //event::poll to wait until timeout for an event 
+            //and if there is one ,send it through our channel
+            //with the key user pressed
             if event::poll(timeout).expect("poll works") {
                 if let CEvent::Key(key) =event::read().expect("can you read events"){
-                    tx.send(Event::Input(key)).expect("can you events");
+                    tx.send(Event::Input(key)).expect("can send events");
                 }
             }
             if last_tick.elapsed() >= tick_rate {
