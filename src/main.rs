@@ -69,9 +69,11 @@ fn main() -> Result<(),Box<dyn std::error::Error>> {
 
     //setting up mpsc for comminicating between input handler and rendering loop
     let (tx,rx) = mpsc::channel();
-    let tick_rate=Duration::from_millis(200);
+    let tick_rate=Duration::from_millis(50);// don't set too low as it will use more resources , but speed thrills :]!
     thread::spawn(move || {
         let mut last_tick =Instant::now();
+        // this input is spawned in another thread as main thread is used to render the app and the
+        // input loop doesn't block rendering
         loop { // input loop
             // calculate timeout(next tick)
             let timeout = tick_rate
@@ -82,10 +84,12 @@ fn main() -> Result<(),Box<dyn std::error::Error>> {
             //with the key user pressed
             if event::poll(timeout).expect("poll works") {
                 if let CEvent::Key(key) =event::read().expect("can you read events"){
+
+                    //send key inputted by the user
                     tx.send(Event::Input(key)).expect("can send events");
                 }
             }
-            if last_tick.elapsed() >= tick_rate {
+            if last_tick.elapsed() >= tick_rate { //if time elapsed send tick
                 if let Ok(_) = tx.send(Event::Tick){
                     last_tick=Instant::now();
                 }
@@ -94,18 +98,24 @@ fn main() -> Result<(),Box<dyn std::error::Error>> {
         }
     });
     let stdout = io::stdout();
-    let backend = CrosstermBackend::new(stdout);
+    let backend = CrosstermBackend::new(stdout);// to get a new backend 
     let mut terminal =Terminal::new(backend)?;
-    terminal.clear()?;
+    terminal.clear()?; //clear the terminal
 
 
     let menu_titles = vec!["Home","Pets","Add","Delete","Quit"];
-    let mut active_menu_item =MenuItem::Home;
+    let mut active_menu_item =MenuItem::Home;//default tab
     let mut pet_list_state = ListState::default();
     pet_list_state.select(Some(0));
-    loop {
+    loop { // loop call terminal.draw() at every iteration
+
+        // draw function is given a closure 
+        // which recieves a rect[layout primitive for rectangle in TUI]
         terminal.draw(|rect| {
             let size = rect.size();
+            // Menu of length ->3
+            //middle content of atleast 2 (free to expand)
+            //Footer of 3
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .margin(2)
@@ -131,7 +141,7 @@ fn main() -> Result<(),Box<dyn std::error::Error>> {
                                              .fg(Color::Yellow)
                                              .add_modifier(Modifier::UNDERLINED),
                                              ),
-                                             Span::styled(rest,Style::default().fg(Color::White))
+                                             Span::styled(rest,Style::default().fg(Color::White)),
                     ])
                 }).collect();
             let tabs =Tabs::new(menu)
@@ -153,6 +163,7 @@ fn main() -> Result<(),Box<dyn std::error::Error>> {
 
             }
             }
+            rect.render_widget(copyright, chunks[2]);
 
         })?;
 
